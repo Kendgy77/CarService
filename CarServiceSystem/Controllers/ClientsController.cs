@@ -1,22 +1,61 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using CarServiceSystem.Data;
+using CarServiceSystem.Models;
+using CarServiceSystem.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using CarServiceSystem.Data;
-using CarServiceSystem.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
 
 namespace CarServiceSystem.Controllers
 {
     public class ClientsController : Controller
     {
         private readonly AppDbContext _context;
+        private readonly EmailService _emailService;
 
-        public ClientsController(AppDbContext context)
+        public ClientsController(AppDbContext context, EmailService emailService)
         {
             _context = context;
+            _emailService = emailService;
+
+        }
+
+        public async Task<IActionResult> SendTestEmail(int clientId)
+        {
+            var client = await _context.Clients.FindAsync(clientId);
+            if (client == null) return NotFound();
+
+            await _emailService.SendEmailAsync(
+                client.Email,
+                "Test Email from CarService",
+                "This is a test email body."
+            );
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        public async Task<IActionResult> SendRepairHistory(int clientId, [FromServices] EmailService emailService)
+        {
+            var client = await _context.Clients
+                .Include(c => c.Cars)
+                .ThenInclude(car => car.Repairs)
+                .FirstOrDefaultAsync(c => c.Id == clientId);
+
+            if (client == null) return NotFound();
+
+            var repairs = client.Cars.SelectMany(c => c.Repairs).ToList();
+            var message = $"Repair history for {client.FirstName} {client.LastName}:\n";
+            foreach (var repair in repairs)
+            {
+                message += $"{repair.RepairDate}: {repair.Description} (Cost: {repair.Cost})\n";
+            }
+
+            await emailService.SendEmailAsync(client.Email, "Your Repair History", message);
+            return RedirectToAction(nameof(Details), new { id = clientId });
         }
 
         // GET: Clients

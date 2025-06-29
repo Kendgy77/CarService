@@ -1,5 +1,6 @@
 using CarServiceSystem.Data; 
 using Microsoft.EntityFrameworkCore;
+using CarServiceSystem.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +12,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+builder.Services.AddTransient<EmailService>();
 
 
 
@@ -33,8 +35,7 @@ app.MapStaticAssets();
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}")
-    .WithStaticAssets();
+    pattern: "{controller=Clients}/{action=Index}/{id?}");
 
 
 app.Run();
