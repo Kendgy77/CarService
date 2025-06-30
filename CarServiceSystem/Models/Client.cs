@@ -1,13 +1,13 @@
-﻿
-namespace CarServiceSystem.Models
+﻿namespace CarServiceSystem.Models 
 {
     public class Client
     {
         public int Id { get; set; }
         public string? FirstName { get; set; }
         public string? LastName { get; set; }
+        public string FullName => $"{FirstName} {LastName}";
         public string? Email { get; set; }
         public string? Phone { get; set; }
-        public List<Car> Cars { get; set; } = new List<Car>();
+        public List<Order> Orders { get; set; } = new List<Order>();
     }
 }

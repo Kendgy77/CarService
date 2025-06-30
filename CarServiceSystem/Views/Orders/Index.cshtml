@@ -1,0 +1,58 @@
+﻿@model IEnumerable<CarServiceSystem.Models.Order>
+
+@{
+    ViewData["Title"] = "All Orders";
+}
+
+<h1>All Orders</h1>
+
+<p>
+    <a asp-action="Create" class="btn btn-success">Create New Order</a>
+</p>
+
+<table class="table table-striped table-hover">
+    <thead class="thead-dark">
+        <tr>
+            <th>Order Date</th>
+            <th>Client</th>
+            <th>Car Brand</th>
+            <th>License Plate</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.OrderDate.ToString("dd.MM.yyyy HH:mm")</td>
+                <td>@item.Client?.FullName</td>
+                <td>@item.CarBrand</td>
+                <td>@item.CarLicensePlate</td>
+                <td>
+                    <span class="badge @GetStatusBadgeClass(item.Status)">@item.Status</span>
+                </td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-primary">Edit</a>
+                    <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-info">Details</a>
+                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">Delete</a>
+      
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@functions {
+    public string GetStatusBadgeClass(string status)
+    {
+        return status switch
+        {
+            "Completed" => "badge-success",
+            "In Progress" => "badge-warning",
+            "Pending" => "badge-secondary",
+            "Cancelled" => "badge-danger",
+            _ => "badge-primary"
+        };
+    }
+}

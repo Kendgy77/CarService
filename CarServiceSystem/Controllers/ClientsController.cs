@@ -1,13 +1,17 @@
 ﻿using CarServiceSystem.Data;
 using CarServiceSystem.Models;
 using CarServiceSystem.Services;
+using MailKit.Security;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using MimeKit;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using MailKit.Net.Smtp;
+
 
 
 namespace CarServiceSystem.Controllers
@@ -38,24 +42,69 @@ namespace CarServiceSystem.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        public async Task<IActionResult> SendRepairHistory(int clientId, [FromServices] EmailService emailService)
+        public async Task<IActionResult> SendRepairHistory(int clientId)
         {
-            var client = await _context.Clients
-                .Include(c => c.Cars)
-                .ThenInclude(car => car.Repairs)
-                .FirstOrDefaultAsync(c => c.Id == clientId);
-
-            if (client == null) return NotFound();
-
-            var repairs = client.Cars.SelectMany(c => c.Repairs).ToList();
-            var message = $"Repair history for {client.FirstName} {client.LastName}:\n";
-            foreach (var repair in repairs)
+            try
             {
-                message += $"{repair.RepairDate}: {repair.Description} (Cost: {repair.Cost})\n";
-            }
+                Console.WriteLine($"Początek SendRepairHistory dla clientId: {clientId}");
 
-            await emailService.SendEmailAsync(client.Email, "Your Repair History", message);
-            return RedirectToAction(nameof(Details), new { id = clientId });
+                var client = await _context.Clients
+                    .Include(c => c.Orders)
+                    .FirstOrDefaultAsync(c => c.Id == clientId);
+
+                if (client == null)
+                {
+                    Console.WriteLine("Klient nie znaleziony");
+                    TempData["Error"] = "Klient nie znaleziony";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                if (string.IsNullOrEmpty(client.Email))
+                {
+                    TempData["Error"] = "Klient nie ma podanego adresu email";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                Console.WriteLine($"Znaleziono klienta: {client.FullName}, zamówień: {client.Orders?.Count ?? 0}");
+
+                var history = new System.Text.StringBuilder();
+                history.AppendLine($"Historia zamówień dla {client.FullName}");
+                history.AppendLine($"Data: {DateTime.Now:dd.MM.yyyy HH:mm}");
+                history.AppendLine("----------------------------");
+
+                if (client.Orders != null && client.Orders.Any())
+                {
+                    foreach (var order in client.Orders)
+                    {
+                        history.AppendLine($"\nZamówienie #{order.Id}");
+                        history.AppendLine($"Auto: {order.CarBrand} ({order.CarLicensePlate})");
+                        history.AppendLine($"Opis: {order.Description}");
+                        history.AppendLine($"Status: {order.Status}");
+                    }
+                }
+                else
+                {
+                    history.AppendLine("\nKlient nie ma zamówień");
+                }
+
+                Console.WriteLine($"Formowany tekst emaila:\n{history}");
+
+                await _emailService.SendEmailAsync(
+                    client.Email,  
+                    $"Historia zamówień {client.FullName}",
+                    history.ToString()
+                );
+
+                Console.WriteLine("Email wysłany pomyślnie");
+                TempData["Message"] = $"Historię wysłano na {client.Email}";
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Błąd w SendRepairHistory: {ex.ToString()}");
+                TempData["Error"] = $"Błąd: {ex.Message}";
+                return RedirectToAction(nameof(Index));
+            }
         }
 
         // GET: Clients
